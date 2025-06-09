@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライブ練習日程調整アプリ</title>
+    <style>
+        /* --- Reset & Base Styles --- */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #87CEEB 0%, #9370DB 100%);
+            --primary-color: #87CEEB;
+            --secondary-color: #9370DB;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --light-gray: #e9ecef;
+            --medium-gray: #ced4da;
+            --dark-gray: #6c757d;
+            --white: #fff;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --confirmed-bg: #e6e0f5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overscroll-behavior: none;
+        }
+
+        /* --- Layout & Screen Management --- */
+        .screen {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
+            padding-top: 70px; /* Header height */
+            padding-bottom: 90px; /* Add song button space */
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- Header --- */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: var(--white);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #menu-button {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 5px;
+            color: var(--dark-gray);
+        }
+
+        /* --- Navigation Menu --- */
+        #nav-menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100%;
+            background: var(--white);
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            transition: left 0.3s ease;
+            z-index: 1002;
+            padding: 20px;
+            padding-top: 60px;
+        }
+
+        #nav-menu.open {
+            left: 0;
+        }
+
+        #nav-menu .nav-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #nav-menu h2 {
+            border-bottom: 2px solid var(--light-gray);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .form-group-inline {
+            display: flex;
+            align-items: center;
+        }
+
+        #password-toggle {
+            background: none; border: none; cursor: pointer; font-size: 1.2rem; margin-left: 8px;
+        }
+
+
+        /* --- Auth Screen --- */
+        #auth-screen .container {
+            max-width: 400px;
+        }
+        .auth-form {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .auth-form h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        input[type="text"], input[type="password"], input[type="email"], input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+            cursor: pointer;
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: opacity 0.3s ease;
+        }
+        .btn:hover {
+            opacity: 0.85;
+        }
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: var(--white);
+        }
+        .btn-secondary {
+            background: var(--light-gray);
+            color: var(--text-color);
+        }
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 0.9rem;
+        }
+
+        /* --- Add Song Button --- */
+        #add-song-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: var(--white);
+            font-size: 2rem;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        /* --- Modal --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: var(--white);
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-button {
+            color: var(--dark-gray);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* --- Main Screen (Song List) --- */
+        #song-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .song-card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            padding: 20px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .song-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.08);
+        }
+        .song-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+        .song-card p {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+            margin-bottom: 5px;
+        }
+        .song-card .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .status.adjusting { background-color: #ffc107; color: #333; }
+        .status.confirmed { background-color: var(--success-color); color: var(--white); }
+
+
+        /* --- Schedule Screen --- */
+        #schedule-header { margin-bottom: 20px; }
+        #schedule-header h2 { font-size: 2rem; }
+        #schedule-header p { color: var(--dark-gray); }
+
+        .schedule-table-container {
+            overflow-x: auto;
+            background: var(--white);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        .schedule-table th, .schedule-table td {
+            border: 1px solid var(--light-gray);
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+            height: 60px;
+        }
+        .schedule-table th {
+            background-color: var(--light-gray);
+            font-size: 0.9rem;
+        }
+        .time-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            white-space: nowrap;
+            width: 30px;
+        }
+
+        .slot {
+            position: relative;
+            cursor: pointer;
+        }
+        .slot.confirmed {
+            background-color: var(--confirmed-bg) !important;
+            cursor: default;
+        }
+        .slot.my-vote {
+            background-color: #d6eaff;
+        }
+
+        .participant-count {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .slot-menu-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: var(--dark-gray);
+            cursor: pointer;
+        }
+        #schedule-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* --- Confirmation Screen --- */
+        #confirm-actions {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .confirm-slot-item {
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .equipment-select {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .equipment-select label { font-size: 0.9rem; margin-bottom: 0; }
+        .equipment-select input[type="number"] {
+            width: 60px;
+            padding: 5px;
+        }
+
+
+        /* --- Utilities --- */
+        .hidden { display: none !important; }
+        .text-danger { color: var(--danger-color); font-size: 0.9rem; margin-top: 10px; }
+        .loader {
+            display: none; /* Changed from 'flex' */
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .loader.active {
+            display: flex;
+        }
+        .spinner {
+            border: 8px solid var(--light-gray);
+            border-top: 8px solid var(--primary-color);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #toast {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 25px;
+            background-color: #333;
+            color: white;
+            border-radius: 8px;
+            z-index: 10000;
+            transition: bottom 0.5s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #toast.show {
+            bottom: 30px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="loader" id="loader"><div class="spinner"></div></div>
+    
+    <div id="toast"></div>
+
+    <header id="app-header" class="hidden">
+        <h1>BandScheduler</h1>
+        <button id="menu-button">≡</button>
+    </header>
+
+    <div id="nav-menu">
+        <div class="nav-content">
+            <h2>アカウント情報</h2>
+            <div class="form-group">
+                <label>ニックネーム</label>
+                <input type="text" id="nav-nickname">
+            </div>
+            <div class="form-group">
+                <label>ログインID</label>
+                <p id="nav-login-id"></p>
+            </div>
+            <div class="form-group">
+                <label>パスワード</label>
+                <div class="form-group-inline">
+                    <input type="password" id="nav-password" readonly>
+                    <button id="password-toggle">👁️</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>サークルコード</label>
+                <p id="nav-circle-code"></p>
+            </div>
+            <button class="btn btn-primary" id="save-nickname-btn">ニックネームを保存</button>
+            <button class="btn btn-secondary" id="logout-btn">ログアウト</button>
+        </div>
+    </div>
+    <div id="nav-overlay" class="modal" style="background: rgba(0,0,0,0.5); z-index: 1001;"></div>
+
+
+    <div id="auth-screen" class="screen active">
+        <div class="container">
+            <div id="signup-form-container">
+                <form id="signup-form" class="auth-form">
+                    <h2>アカウント作成</h2>
+                    <div class="form-group">
+                        <label for="signup-id">ログインID (メールアドレス)</label>
+                        <input type="email" id="signup-id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">パスワード</label>
+                        <input type="password" id="signup-password" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-nickname">ニックネーム</label>
+                        <input type="text" id="signup-nickname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-circle">サークルコード</label>
+                        <input type="text" id="signup-circle" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">登録する</button>
+                    <p class="text-danger hidden" id="signup-error"></p>
+                    <p class="toggle-form" id="show-login">すでに登録済みの方はこちら</p>
+                </form>
+            </div>
+            <div id="login-form-container" class="hidden">
+                <form id="login-form" class="auth-form">
+                    <h2>ログイン</h2>
+                    <div class="form-group">
+                        <label for="login-id">ログインID (メールアドレス)</label>
+                        <input type="email" id="login-id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">パスワード</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">ログイン</button>
+                    <p class="text-danger hidden" id="login-error"></p>
+                    <p class="toggle-form" id="show-signup">アカウントを新規作成する</p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-screen" class="screen">
+        <div class="container">
+            <h2 id="main-title" style="margin-bottom: 20px;"></h2>
+            <div id="song-list">
+                </div>
+             <p id="no-songs-message" class="hidden" style="text-align:center; color: var(--dark-gray); padding: 40px 0;">まだ日程調整が作成されていません。</p>
+        </div>
+        <button id="add-song-button">+</button>
+    </div>
+
+    <div id="schedule-screen" class="screen">
+        <div class="container">
+            <div id="schedule-header">
+                <h2 id="schedule-song-name"></h2>
+                <p id="schedule-period"></p>
+            </div>
+            
+            <div class="schedule-table-container">
+                <table class="schedule-table">
+                    <thead id="schedule-table-head"></thead>
+                    <tbody id="schedule-table-body"></tbody>
+                </table>
+            </div>
+            
+            <div id="schedule-actions">
+                <button id="save-schedule-btn" class="btn btn-primary">保存</button>
+                <button id="edit-schedule-btn" class="btn btn-secondary hidden">編集する</button>
+                <button id="go-to-confirm-btn" class="btn btn-success hidden">練習コマ確定へ</button>
+            </div>
+            <button id="back-to-main-btn" class="btn btn-secondary" style="margin-top: 10px;">曲リストに戻る</button>
+        </div>
+    </div>
+    
+    <div id="confirm-screen" class="screen">
+         <div class="container">
+            <h2>練習コマ確定</h2>
+            <p>練習を行うコマにチェックを入れ、使用機材を選択してください。</p>
+            
+            <div class="schedule-table-container">
+                <table class="schedule-table">
+                    <thead id="confirm-table-head"></thead>
+                    <tbody id="confirm-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="confirm-actions">
+                <button id="confirm-schedule-btn" class="btn btn-primary">練習日程を確定する</button>
+                 <button id="back-to-schedule-btn" class="btn btn-secondary">空きコマ入力画面に戻る</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="add-song-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>新規日程調整</h2>
+                <span class="close-button" data-modal="add-song-modal">&times;</span>
+            </div>
+            <form id="add-song-form">
+                <div class="form-group">
+                    <label for="song-name">曲名</label>
+                    <input type="text" id="song-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="start-date">練習可能期間（開始）</label>
+                    <input type="date" id="start-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end-date">練習可能期間（終了）</label>
+                    <input type="date" id="end-date" required>
+                </div>
+                <button type="submit" class="btn btn-primary">作成</button>
+                <p class="text-danger hidden" id="add-song-error"></p>
+            </form>
+        </div>
+    </div>
+    
+    <div id="participants-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="participants-modal-title">参加予定者</h2>
+                <span class="close-button" data-modal="participants-modal">&times;</span>
+            </div>
+            <ul id="participants-list"></ul>
+        </div>
+    </div>
+    
+    <div id="share-link-modal" class="modal">
+        <div class="modal-content">
+             <div class="modal-header">
+                <h2>共有リンク</h2>
+                <span class="close-button" data-modal="share-link-modal">&times;</span>
+            </div>
+            <p>このリンクをメンバーに共有してください。</p>
+            <input type="text" id="share-link-input" readonly style="margin-top: 15px;">
+            <button id="copy-link-btn" class="btn btn-secondary" style="margin-top: 10px;">リンクをコピー</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        /* ▼▼▼ YOUR FIREBASE CONFIG ▼▼▼ */
+        const firebaseConfig = {
+  apiKey: "AIzaSyCZqRITKMZbTVqfzO6Pw1XglMK9UyWNytw",
+  authDomain: "music-schedule-76374.firebaseapp.com",
+  projectId: "music-schedule-76374",
+  storageBucket: "music-schedule-76374.firebasestorage.app",
+  messagingSenderId: "663661286537",
+  appId: "1:663661286537:web:31818d6287148e65bd6258",
+  measurementId: "G-8WZMKJJ2PD"
+};
+        /* ▲▲▲ YOUR FIREBASE CONFIG ▲▲▲ */
+
+        // --- Firebase Initialization ---
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- State Management ---
+        const state = {
+            currentUser: null,
+            userData: null,
+            currentSongId: null,
+            currentSongData: null,
+            unsubscribeSongListener: null,
+            unsubscribeSongsListener: null,
+        };
+        
+        const timeSlots = ['1限', '昼', '2限', '3限', '4限', '5限', '6限', '7限'];
+        const equipmentList = {
+            'スプハイ': 3,
+            'キーボード': 3,
+            'ベーアン': 3,
+            'キューブアンプ': 3
+        };
+
+        // --- UI Elements ---
+        const loader = document.getElementById('loader');
+        const toast = document.getElementById('toast');
+        const screens = {
+            auth: document.getElementById('auth-screen'),
+            main: document.getElementById('main-screen'),
+            schedule: document.getElementById('schedule-screen'),
+            confirm: document.getElementById('confirm-screen'),
+        };
+        const modals = {
+            addSong: document.getElementById('add-song-modal'),
+            participants: document.getElementById('participants-modal'),
+            shareLink: document.getElementById('share-link-modal'),
+            navOverlay: document.getElementById('nav-overlay'),
+        };
+        const appHeader = document.getElementById('app-header');
+        const navMenu = document.getElementById('nav-menu');
+
+        // --- Utility Functions ---
+        const showLoader = () => loader.classList.add('active');
+        const hideLoader = () => loader.classList.remove('active');
+        
+        const showToast = (message) => {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        };
+
+        const showScreen = (screenName) => {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            if (screens[screenName]) {
+                screens[screenName].classList.add('active');
+            }
+            appHeader.classList.toggle('hidden', screenName === 'auth');
+        };
+
+        const showModal = (modalName) => modals[modalName]?.classList.add('active');
+        const hideModal = (modalName) => modals[modalName]?.classList.remove('active');
+
+        const formatDate = (dateStr) => {
+            const date = new Date(dateStr);
+            return `${date.getMonth() + 1}/${date.getDate()}(${['日','月','火','水','木','金','土'][date.getDay()]})`;
+        };
+        
+        const getDatesArray = (startDate, endDate) => {
+            const dates = [];
+            let currentDate = new Date(startDate);
+            const stopDate = new Date(endDate);
+            while (currentDate <= stopDate) {
+                dates.push(new Date(currentDate).toISOString().split('T')[0]);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return dates;
+        };
+        
+        // --- Authentication ---
+        auth.onAuthStateChanged(async user => {
+            if (user) {
+                state.currentUser = user;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    state.userData = { uid: user.uid, ...userDoc.data() };
+                    localStorage.setItem('userLoggedIn', 'true');
+                    await initAppForUser();
+                } else {
+                    // This case might happen if user is authenticated but user doc is deleted
+                    await auth.signOut();
+                }
+            } else {
+                state.currentUser = null;
+                state.userData = null;
+                localStorage.removeItem('userLoggedIn');
+                if (state.unsubscribeSongsListener) state.unsubscribeSongsListener();
+                if (state.unsubscribeSongListener) state.unsubscribeSongListener();
+                history.replaceState(null, '', window.location.pathname); // Clean URL
+                showScreen('auth');
+            }
+            hideLoader();
+        });
+
+        const initAppForUser = async () => {
+            if (!state.userData) return;
+            setupNavMenu();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const songId = urlParams.get('song');
+            const circleCode = urlParams.get('circle');
+
+            if (songId && circleCode && circleCode === state.userData.circleCode) {
+                await loadSong(songId);
+            } else {
+                await loadMainScreen();
+            }
+        };
+
+        // Sign Up
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const email = document.getElementById('signup-id').value;
+            const password = document.getElementById('signup-password').value;
+            const nickname = document.getElementById('signup-nickname').value;
+            const circleCode = document.getElementById('signup-circle').value;
+            const errorEl = document.getElementById('signup-error');
+            
+            try {
+                errorEl.classList.add('hidden');
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Create user profile in Firestore
+                await db.collection('users').doc(user.uid).set({
+                    nickname,
+                    circleCode,
+                    email,
+                });
+                
+                // Add user to circle members
+                const circleRef = db.collection('circles').doc(circleCode);
+                await circleRef.collection('members').doc(user.uid).set({ nickname });
+
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+                hideLoader();
+            }
+        });
+        
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const email = document.getElementById('login-id').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            try {
+                errorEl.classList.add('hidden');
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                errorEl.textContent = "ログインIDまたはパスワードが正しくありません。";
+                errorEl.classList.remove('hidden');
+                hideLoader();
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            showLoader();
+            await auth.signOut();
+        });
+
+        // Toggle Auth Forms
+        document.getElementById('show-login').addEventListener('click', () => {
+            document.getElementById('signup-form-container').classList.add('hidden');
+            document.getElementById('login-form-container').classList.remove('hidden');
+        });
+        document.getElementById('show-signup').addEventListener('click', () => {
+            document.getElementById('login-form-container').classList.add('hidden');
+            document.getElementById('signup-form-container').classList.remove('hidden');
+        });
+
+        // --- Navigation Menu Logic ---
+        const setupNavMenu = () => {
+            if (!state.userData) return;
+            document.getElementById('nav-nickname').value = state.userData.nickname;
+            document.getElementById('nav-login-id').textContent = state.userData.email;
+            document.getElementById('nav-circle-code').textContent = state.userData.circleCode;
+        };
+
+        document.getElementById('menu-button').addEventListener('click', () => {
+             navMenu.classList.add('open');
+             modals.navOverlay.classList.add('active');
+        });
+        
+        modals.navOverlay.addEventListener('click', () => {
+            navMenu.classList.remove('open');
+            modals.navOverlay.classList.remove('active');
+        });
+        
+        document.getElementById('password-toggle').addEventListener('click', (e) => {
+            const passwordInput = document.getElementById('nav-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                e.target.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                e.target.textContent = '👁️';
+            }
+        });
+
+        document.getElementById('save-nickname-btn').addEventListener('click', async () => {
+            const newNickname = document.getElementById('nav-nickname').value.trim();
+            if (newNickname && newNickname !== state.userData.nickname) {
+                showLoader();
+                try {
+                    const userRef = db.collection('users').doc(state.currentUser.uid);
+                    await userRef.update({ nickname: newNickname });
+
+                    // Update nickname in circle members as well
+                    const circleMemberRef = db.collection('circles').doc(state.userData.circleCode)
+                                            .collection('members').doc(state.currentUser.uid);
+                    await circleMemberRef.update({ nickname: newNickname });
+                    
+                    state.userData.nickname = newNickname;
+                    showToast('ニックネームを更新しました。');
+                } catch (error) {
+                    console.error("Error updating nickname: ", error);
+                    showToast('更新に失敗しました。');
+                } finally {
+                    hideLoader();
+                }
+            }
+        });
+
+
+        // --- Main Screen (Song List) ---
+        const loadMainScreen = async () => {
+            if (state.unsubscribeSongsListener) state.unsubscribeSongsListener();
+            showLoader();
+            document.getElementById('main-title').textContent = `${state.userData.circleCode} の日程調整一覧`;
+            
+            const songsRef = db.collection('circles').doc(state.userData.circleCode).collection('songs');
+            state.unsubscribeSongsListener = songsRef.onSnapshot(snapshot => {
+                const songListEl = document.getElementById('song-list');
+                songListEl.innerHTML = '';
+                if (snapshot.empty) {
+                    document.getElementById('no-songs-message').classList.remove('hidden');
+                } else {
+                     document.getElementById('no-songs-message').classList.add('hidden');
+                     snapshot.docs.forEach(doc => {
+                        const song = doc.data();
+                        const card = document.createElement('div');
+                        card.className = 'song-card';
+                        card.dataset.songId = doc.id;
+                        card.innerHTML = `
+                            <h3>${song.songName}</h3>
+                            <p>作成者: ${song.creatorNickname}</p>
+                            <p>期間: ${formatDate(song.startDate)} ~ ${formatDate(song.endDate)}</p>
+                            <span class="status ${song.status}">${song.status === 'adjusting' ? '調整中' : '確定済'}</span>
+                        `;
+                        card.addEventListener('click', () => loadSong(doc.id));
+                        songListEl.appendChild(card);
+                    });
+                }
+                showScreen('main');
+                hideLoader();
+            }, error => {
+                console.error(error);
+                showToast('曲リストの読み込みに失敗しました。');
+                hideLoader();
+            });
+        };
+        
+        document.getElementById('back-to-main-btn').addEventListener('click', () => {
+             if (state.unsubscribeSongListener) state.unsubscribeSongListener();
+             state.currentSongId = null;
+             state.currentSongData = null;
+             history.pushState(null, '', window.location.pathname);
+             loadMainScreen();
+        });
+
+
+        // --- Add Song ---
+        document.getElementById('add-song-button').addEventListener('click', () => showModal('addSong'));
+        document.querySelector('[data-modal="add-song-modal"]').addEventListener('click', () => hideModal('addSong'));
+        
+        document.getElementById('add-song-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const songName = document.getElementById('song-name').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const errorEl = document.getElementById('add-song-error');
+
+            if (!songName || !startDate || !endDate || new Date(startDate) > new Date(endDate)) {
+                errorEl.textContent = '有効な曲名と期間を入力してください。';
+                errorEl.classList.remove('hidden');
+                hideLoader();
+                return;
+            }
+            errorEl.classList.add('hidden');
+
+            try {
+                const songsRef = db.collection('circles').doc(state.userData.circleCode).collection('songs');
+                const newSongRef = await songsRef.add({
+                    songName,
+                    startDate,
+                    endDate,
+                    creatorId: state.currentUser.uid,
+                    creatorNickname: state.userData.nickname,
+                    status: 'adjusting', // 'adjusting' or 'confirmed'
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    votes: {},
+                    confirmedSlots: {}
+                });
+
+                document.getElementById('add-song-form').reset();
+                hideModal('addSong');
+                
+                // Show share link modal
+                const link = `${window.location.origin}${window.location.pathname}?circle=${state.userData.circleCode}&song=${newSongRef.id}`;
+                document.getElementById('share-link-input').value = link;
+                showModal('shareLink');
+                
+                loadSong(newSongRef.id); // Go to the new song's page
+            } catch (error) {
+                console.error(error);
+                showToast('日程調整の作成に失敗しました。');
+                hideLoader();
+            }
+        });
+
+        // Share link modal logic
+        document.querySelector('[data-modal="share-link-modal"]').addEventListener('click', () => hideModal('shareLink'));
+        document.getElementById('copy-link-btn').addEventListener('click', () => {
+            const linkInput = document.getElementById('share-link-input');
+            linkInput.select();
+            document.execCommand('copy');
+            showToast('リンクをコピーしました！');
+        });
+
+
+        // --- Schedule Screen Logic ---
+        const loadSong = async (songId) => {
+            if (state.unsubscribeSongListener) state.unsubscribeSongListener();
+            showLoader();
+            state.currentSongId = songId;
+            
+            const songRef = db.collection('circles').doc(state.userData.circleCode).collection('songs').doc(songId);
+            state.unsubscribeSongListener = songRef.onSnapshot(doc => {
+                if (doc.exists) {
+                    state.currentSongData = { id: doc.id, ...doc.data() };
+                    const url = `?circle=${state.userData.circleCode}&song=${songId}`;
+                    history.pushState({songId}, ``, url);
+                    
+                    const isCreator = state.currentSongData.creatorId === state.currentUser.uid;
+                    const isAdjusting = state.currentSongData.status === 'adjusting';
+                    
+                    document.getElementById('go-to-confirm-btn').classList.toggle('hidden', !isCreator || !isAdjusting);
+                    
+                    renderScheduleTable();
+                    
+                    // If schedule is already confirmed, jump to confirmation view
+                    if(state.currentSongData.status === 'confirmed') {
+                         renderConfirmTable(true); // render readonly confirm table
+                         showScreen('confirm');
+                    } else {
+                         showScreen('schedule');
+                    }
+                    
+                } else {
+                    showToast('指定された日程調整が見つかりません。');
+                    loadMainScreen();
+                }
+                hideLoader();
+            }, error => {
+                console.error("Error loading song:", error);
+                showToast('データの読み込みに失敗しました。');
+                loadMainScreen();
+            });
+        };
+        
+        const renderScheduleTable = () => {
+            const song = state.currentSongData;
+            document.getElementById('schedule-song-name').textContent = song.songName;
+            document.getElementById('schedule-period').textContent = `期間: ${formatDate(song.startDate)} - ${formatDate(song.endDate)}`;
+            
+            const dates = getDatesArray(song.startDate, song.endDate);
+            const head = document.getElementById('schedule-table-head');
+            const body = document.getElementById('schedule-table-body');
+            
+            // Build header
+            let headHTML = '<tr><th></th>';
+            dates.forEach(date => headHTML += `<th>${formatDate(date)}</th>`);
+            headHTML += '</tr>';
+            head.innerHTML = headHTML;
+
+            // Build body
+            let bodyHTML = '';
+            timeSlots.forEach((time, timeIndex) => {
+                bodyHTML += `<tr><td class="time-header">${time}</td>`;
+                dates.forEach(date => {
+                    const slotId = `${date}_${timeIndex}`;
+                    const votes = song.votes[slotId] || {};
+                    const participantIds = Object.keys(votes);
+                    const participantCount = participantIds.length;
+                    const myVote = votes[state.currentUser.uid];
+                    
+                    bodyHTML += `
+                        <td class="slot ${myVote ? 'my-vote' : ''}" data-slot-id="${slotId}">
+                            <span class="participant-count">${participantCount}</span>
+                            <button class="slot-menu-btn" data-slot-id="${slotId}" ${participantCount === 0 ? 'style="display:none;"' : ''}>...</button>
+                        </td>
+                    `;
+                });
+                bodyHTML += '</tr>';
+            });
+            body.innerHTML = bodyHTML;
+            
+            // Add event listeners
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.addEventListener('click', (e) => {
+                    if(e.target.classList.contains('slot-menu-btn')) return;
+                    if(state.currentSongData.status !== 'adjusting') return; // Cannot vote on confirmed schedules
+                    
+                    const slotId = slot.dataset.slotId;
+                    slot.classList.toggle('my-vote');
+                    const myVote = slot.classList.contains('my-vote');
+                    
+                    // Visually update count immediately
+                    const countEl = slot.querySelector('.participant-count');
+                    let currentCount = parseInt(countEl.textContent);
+                    countEl.textContent = myVote ? currentCount + 1 : currentCount - 1;
+                });
+            });
+            
+            document.querySelectorAll('.slot-menu-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const slotId = btn.dataset.slotId;
+                    const votes = state.currentSongData.votes[slotId] || {};
+                    const participantIds = Object.keys(votes);
+                    
+                    if (participantIds.length > 0) {
+                        showLoader();
+                        // Fetch nicknames
+                        const membersRef = db.collection('circles').doc(state.userData.circleCode).collection('members');
+                        const memberDocs = await membersRef.where(firebase.firestore.FieldPath.documentId(), 'in', participantIds).get();
+                        const nicknames = memberDocs.docs.map(doc => doc.data().nickname);
+                        
+                        document.getElementById('participants-list').innerHTML = nicknames.map(name => `<li>${name}</li>`).join('');
+                        const [date, time] = slotId.split('_');
+                        document.getElementById('participants-modal-title').textContent = `${formatDate(date)} ${timeSlots[time]} の参加予定者`;
+                        hideLoader();
+                        showModal('participants');
+                    }
+                });
+            });
+        };
+        
+        document.querySelector('[data-modal="participants-modal"]').addEventListener('click', () => hideModal('participants'));
+        
+        document.getElementById('save-schedule-btn').addEventListener('click', async () => {
+             if (state.currentSongData.status !== 'adjusting') {
+                showToast('この日程は確定済みのため編集できません。');
+                return;
+            }
+            showLoader();
+            const songRef = db.collection('circles').doc(state.userData.circleCode).collection('songs').doc(state.currentSongId);
+            const batch = db.batch();
+
+            const currentVotes = { ...state.currentSongData.votes };
+            
+            document.querySelectorAll('.slot').forEach(slot => {
+                const slotId = slot.dataset.slotId;
+                const hasMyVote = slot.classList.contains('my-vote');
+                
+                if(!currentVotes[slotId]) currentVotes[slotId] = {};
+                
+                if (hasMyVote) {
+                    currentVotes[slotId][state.currentUser.uid] = true;
+                } else {
+                    delete currentVotes[slotId][state.currentUser.uid];
+                }
+                
+                // Clean up empty slot objects
+                if(Object.keys(currentVotes[slotId]).length === 0) {
+                    delete currentVotes[slotId];
+                }
+            });
+            
+            // Use dot notation for updating nested objects
+            const updates = {};
+            Object.keys(currentVotes).forEach(slotId => {
+                 updates[`votes.${slotId}`] = currentVotes[slotId];
+            });
+            
+            // To delete fields, we must update with FieldValue.delete()
+            const oldSlotIds = Object.keys(state.currentSongData.votes);
+            const newSlotIds = Object.keys(currentVotes);
+            oldSlotIds.forEach(oldSlotId => {
+                if(!newSlotIds.includes(oldSlotId)) {
+                    updates[`votes.${oldSlotId}`] = firebase.firestore.FieldValue.delete();
+                }
+            });
+
+            try {
+                await songRef.update(updates);
+                showToast('空きコマを保存しました！');
+            } catch (error) {
+                console.error("Error saving schedule: ", error);
+                showToast('保存に失敗しました。');
+            } finally {
+                hideLoader();
+            }
+        });
+        
+        // --- Confirmation Phase ---
+        document.getElementById('go-to-confirm-btn').addEventListener('click', () => {
+            renderConfirmTable();
+            showScreen('confirm');
+        });
+        
+        document.getElementById('back-to-schedule-btn').addEventListener('click', () => showScreen('schedule'));
+
+        const renderConfirmTable = (isReadOnly = false) => {
+            const song = state.currentSongData;
+            const dates = getDatesArray(song.startDate, song.endDate);
+            const head = document.getElementById('confirm-table-head');
+            const body = document.getElementById('confirm-table-body');
+
+            let headHTML = '<tr><th></th>';
+            dates.forEach(date => headHTML += `<th>${formatDate(date)}</th>`);
+            headHTML += '</tr>';
+            head.innerHTML = headHTML;
+
+            let bodyHTML = '';
+            timeSlots.forEach((time, timeIndex) => {
+                bodyHTML += `<tr><td class="time-header">${time}</td>`;
+                dates.forEach(date => {
+                    const slotId = `${date}_${timeIndex}`;
+                    const votes = song.votes[slotId] || {};
+                    const participantCount = Object.keys(votes).length;
+                    const isConfirmedSlot = !!song.confirmedSlots[slotId];
+                    
+                    let contentHTML = '';
+                    if (isReadOnly && isConfirmedSlot) {
+                        const confirmedData = song.confirmedSlots[slotId];
+                        const equipmentHTML = Object.entries(confirmedData.equipment)
+                            .filter(([_, count]) => count > 0)
+                            .map(([name, count]) => `<div>${name}: ${count}</div>`).join('');
+                        
+                        contentHTML = `
+                            <div style="font-size:0.9rem;">
+                                <strong>参加者: ${confirmedData.participants.length}人</strong>
+                                <div style="font-size:0.8rem; margin-top:5px;">${equipmentHTML}</div>
+                            </div>`;
+                    } else if (!isReadOnly) {
+                         contentHTML = `
+                            <label style="display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; height: 100%;">
+                                <input type="checkbox" class="confirm-checkbox" data-slot-id="${slotId}">
+                                <span>${participantCount}人</span>
+                            </label>
+                            <div class="equipment-select hidden">
+                                ${Object.keys(equipmentList).map(eq => `
+                                    <div style="font-size:0.8rem;">
+                                        <label>${eq}</label>
+                                        <input type="number" class="equipment-input" data-equipment="${eq}" min="0" max="${equipmentList[eq]}" value="0">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    bodyHTML += `<td class="slot ${isConfirmedSlot ? 'confirmed' : ''}" data-slot-id="${slotId}">${contentHTML}</td>`;
+                });
+                bodyHTML += '</tr>';
+            });
+            body.innerHTML = bodyHTML;
+            
+            if(!isReadOnly) {
+                // Add event listeners for checkboxes
+                document.querySelectorAll('.confirm-checkbox').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const equipmentDiv = cb.closest('label').nextElementSibling;
+                        equipmentDiv.classList.toggle('hidden', !cb.checked);
+                    });
+                });
+            } else {
+                 // Hide action buttons in read-only mode
+                 document.getElementById('confirm-actions').classList.add('hidden');
+            }
+        };
+
+        document.getElementById('confirm-schedule-btn').addEventListener('click', async () => {
+            showLoader();
+            
+            const selectedSlots = {};
+            document.querySelectorAll('.confirm-checkbox:checked').forEach(cb => {
+                const slotId = cb.dataset.slotId;
+                const equipment = {};
+                cb.closest('td').querySelectorAll('.equipment-input').forEach(input => {
+                    equipment[input.dataset.equipment] = parseInt(input.value) || 0;
+                });
+                
+                const participantIds = Object.keys(state.currentSongData.votes[slotId] || {});
+                
+                selectedSlots[slotId] = { equipment, participants: participantIds };
+            });
+
+            if (Object.keys(selectedSlots).length === 0) {
+                showToast('確定するコマを選択してください。');
+                hideLoader();
+                return;
+            }
+
+            // --- Validation ---
+            try {
+                // 1. Get all confirmed songs in the circle
+                const allSongsSnapshot = await db.collection('circles').doc(state.userData.circleCode)
+                    .collection('songs').where('status', '==', 'confirmed').get();
+                const confirmedSongs = allSongsSnapshot.docs.map(d => ({id: d.id, ...d.data()}));
+
+                // 2. Perform validation checks
+                for (const slotId in selectedSlots) {
+                    const [date, time] = slotId.split('_');
+                    const slotData = selectedSlots[slotId];
+                    
+                    // 2a. Practice Overlap Check
+                    for (const participantId of slotData.participants) {
+                        for (const song of confirmedSongs) {
+                            if (song.id === state.currentSongId) continue; // Skip self
+                            const conflictingSlot = song.confirmedSlots[slotId];
+                            if (conflictingSlot && conflictingSlot.participants.includes(participantId)) {
+                                const memberDoc = await db.collection('circles').doc(state.userData.circleCode).collection('members').doc(participantId).get();
+                                const nickname = memberDoc.exists ? memberDoc.data().nickname : '不明なユーザー';
+                                throw new Error(`${nickname}さんは「${song.songName}」の練習（${formatDate(date)} ${timeSlots[time]}）と時間が重複しています。`);
+                            }
+                        }
+                    }
+                    
+                    // 2b. Equipment Stock Check
+                    const totalEquipment = { ...slotData.equipment };
+                    for (const song of confirmedSongs) {
+                         if (song.id === state.currentSongId) continue; // Skip self
+                         const conflictingSlot = song.confirmedSlots[slotId];
+                         if (conflictingSlot) {
+                            for(const eqName in conflictingSlot.equipment) {
+                                totalEquipment[eqName] = (totalEquipment[eqName] || 0) + conflictingSlot.equipment[eqName];
+                            }
+                         }
+                    }
+
+                    for(const eqName in totalEquipment) {
+                        if (totalEquipment[eqName] > equipmentList[eqName]) {
+                            throw new Error(`${formatDate(date)} ${timeSlots[time]}の「${eqName}」の在庫が不足しています。（必要数: ${totalEquipment[eqName]}, 在庫: ${equipmentList[eqName]}）`);
+                        }
+                    }
+                }
+
+                // --- All Validations Passed, Proceed to Save ---
+                const songRef = db.collection('circles').doc(state.userData.circleCode).collection('songs').doc(state.currentSongId);
+                await songRef.update({
+                    status: 'confirmed',
+                    confirmedSlots: selectedSlots
+                });
+                
+                showToast('練習日程を確定しました！');
+                // The onSnapshot listener will automatically update the view
+                
+            } catch (error) {
+                console.error("Validation failed:", error);
+                showToast(`エラー: ${error.message}`);
+            } finally {
+                hideLoader();
+            }
+        });
+
+    });
+    </script>
+</body>
+</html>
